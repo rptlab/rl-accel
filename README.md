@@ -4,4 +4,6 @@ _\_rl_accel_
 
 which can be used to speedup the reportlab.lib.rl_accel.py functions.
 
-The current _version_ is 0.9.0 and is based on the Python 3.7 limited ABI.
+The current _version_ is 0.9.2 and is based on the Python 3.7 limited ABI.
+
+Two bugs were dound by neelagiri.chettiyar@nativerse-ventures.com
