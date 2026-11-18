@@ -12,7 +12,6 @@ concurrency:
 
 jobs:
   build-wheels-linux-mac-windows:
-    needs: [clear-cache]
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
