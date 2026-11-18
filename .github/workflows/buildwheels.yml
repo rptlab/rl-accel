@@ -11,23 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clear-cache:
-    name: clear-cache
-    runs-on: ubuntu-latest
-    steps:
-      - name: setup python for clear-cache
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.13'
-      - name: clear
-        #if: github.event.repository.name == 'rl-accel-mirror'
-        env:
-          CITOOLS_USER: "${{secrets.CITOOLS_USER}}"
-          CITOOLS_PASSWORD: "${{secrets.CITOOLS_PASSWORD}}"
-        run: |
-            python -mpip install --no-cache -U https://github.com/rptlab/rl-ci-tools/archive/refs/heads/master.tar.gz
-            python -mrl_ci_tools clear-cache "${{ github.event.repository.name }}"
-            echo "cleared remote cache for ${{ github.event.repository.name }}"
   build-wheels-linux-mac-windows:
     needs: [clear-cache]
     name: Build wheels on ${{ matrix.os }}
@@ -41,7 +24,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-13, macos-14]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15-intel, macos-15]
 
     steps:
       - uses: actions/checkout@v7
@@ -57,44 +40,12 @@ jobs:
           python-version: '3.13'
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22.0
+        uses: pypa/cibuildwheel@v4.3.5
         env:
           CIBW_BUILD: cp313-*
           CIBW_ARCHS_LINUX: ${{ runner.arch == 'X64' && 'auto ppc64le s390x' || 'auto armv7l' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: "${{ github.event.repository.name }}-${{ matrix.os }}-${{ strategy.job-index }}"
           path: ./wheelhouse/*.whl
-
-      - name: upload wheels
-        env:
-          CITOOLS_USER: "${{secrets.CITOOLS_USER}}"
-          CITOOLS_PASSWORD: "${{secrets.CITOOLS_PASSWORD}}"
-        run: |
-          python -mpip install --no-cache -U https://github.com/rptlab/rl-ci-tools/archive/refs/heads/master.tar.gz
-          python -mrl_ci_tools upload-caches --subdir='${{ github.event.repository.name }}' --verbosity=1 ./wheelhouse/*.whl
-          python -mrl_ci_tools env-upload
-
-  email:
-    #if: github.event.repository.name == 'rl-accel-mirror'
-    name: email
-    needs: [build-wheels-linux-mac-windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: setup python for upload
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.13'
-      - name: email confirmation
-        env:
-          CITOOLS_USER: "${{secrets.CITOOLS_USER}}"
-          CITOOLS_PASSWORD: "${{secrets.CITOOLS_PASSWORD}}"
-        run: |
-            python -mpip install --no-cache -U https://github.com/rptlab/rl-ci-tools/archive/refs/heads/master.tar.gz
-            BODY="$(python -mrl_ci_tools cache-info --subdir='${{ github.event.repository.name }}' '*.whl')"
-            NUPLOADS=$(expr $(echo "$BODY" | wc -l) - 1)
-            SUBJECT="$NUPLOADS ${{ github.event.repository.name }} wheels uploaded to our pypi/caches/${{ github.event.repository.name }} folder by github"
-            python -mrl_ci_tools email --subject="$SUBJECT" --body="$BODY"
-            echo "$SUBJECT"
-            echo "$BODY"
